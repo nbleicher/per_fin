@@ -35,6 +35,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "esbuild": "^0.27.0",
     "@next/bundle-analyzer": "^16.2.6",
     "@types/node": "latest",
     "@types/react": "latest",

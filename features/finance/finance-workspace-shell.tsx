@@ -13,6 +13,7 @@ import { billDueBadgeLabel } from "@/lib/finance/bill-due-badge";
 import { buildBillPaymentPayload } from "@/lib/finance/bill-status";
 import { computeAccountBalances } from "@/lib/finance/balances";
 import { buildLiabilityBalanceAdjustmentPayload } from "@/lib/finance/liability-balance-adjustment";
+import { formatAccountOptionLabel } from "@/lib/account-option-label";
 import { queryKeys } from "@/lib/query-keys";
 import { InvestmentsTab } from "@/features/finance/investments-tab";
 import { FireTab } from "@/features/finance/fire-tab";
@@ -80,6 +81,9 @@ export function FinanceWorkspaceShell() {
   const [creditExpandedId, setCreditExpandedId] = useState<number | null>(null);
   const [creditTargetBalance, setCreditTargetBalance] = useState("");
   const [creditBalanceSubmitting, setCreditBalanceSubmitting] = useState(false);
+  const [debitExpandedId, setDebitExpandedId] = useState<number | null>(null);
+  const [debitTargetBalance, setDebitTargetBalance] = useState("");
+  const [debitBalanceSubmitting, setDebitBalanceSubmitting] = useState(false);
 
   const invalidateFinanceAndDashboard = useCallback(async () => {
     await Promise.all([
@@ -189,6 +193,9 @@ export function FinanceWorkspaceShell() {
   useEffect(() => {
     if (activeTab !== "credit") {
       setCreditExpandedId(null);
+    }
+    if (activeTab !== "debit") {
+      setDebitExpandedId(null);
     }
   }, [activeTab]);
 
@@ -411,6 +418,50 @@ export function FinanceWorkspaceShell() {
     }
   }, [creditExpandedId, creditTargetBalance, creditAccounts, balances, invalidateFinanceAndDashboard]);
 
+  const toggleDebitExpand = (account: Account) => {
+    if (debitExpandedId === account.id) {
+      setDebitExpandedId(null);
+      return;
+    }
+    setDebitExpandedId(account.id);
+    setDebitTargetBalance((balances.get(account.id) ?? 0).toFixed(2));
+  };
+
+  const submitDebitBalanceReconciliation = useCallback(async () => {
+    if (debitExpandedId == null) return;
+    const account = debitAccounts.find((a) => a.id === debitExpandedId);
+    if (!account) return;
+    setActionError(null);
+    const target = Number(debitTargetBalance);
+    if (!Number.isFinite(target)) {
+      setActionError("Enter a valid balance amount.");
+      return;
+    }
+    const computed = balances.get(account.id) ?? 0;
+    const payload = buildLiabilityBalanceAdjustmentPayload(account, computed, target);
+    if (!payload) {
+      return;
+    }
+    setDebitBalanceSubmitting(true);
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = (await res.json().catch(() => null)) as ApiSuccess<unknown> | ApiError | null;
+      if (!res.ok || !body?.ok) {
+        setActionError(body && !body.ok ? body.error.message : "Failed to record balance adjustment.");
+        return;
+      }
+      setActionError(null);
+      setDebitExpandedId(null);
+      await invalidateFinanceAndDashboard();
+    } finally {
+      setDebitBalanceSubmitting(false);
+    }
+  }, [debitExpandedId, debitTargetBalance, debitAccounts, balances, invalidateFinanceAndDashboard]);
+
   const selectedIsCurrentMonth = selectedMonth === new Date().toISOString().slice(0, 7);
 
   return (
@@ -534,7 +585,7 @@ export function FinanceWorkspaceShell() {
                   <option value="">Select account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.name}
+                      {formatAccountOptionLabel(account)}
                     </option>
                   ))}
                 </select>
@@ -665,16 +716,81 @@ export function FinanceWorkspaceShell() {
                 Add Debit Account
               </Button>
             </div>
+            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+              Click a card to set your initial/current loan balance; we post a ledger adjustment so the running
+              balance matches.
+            </p>
             {debitAccounts.map((account) => (
-              <StatePanel
-                key={account.id}
-                title={account.name}
-                message={`Balance owed: $${(balances.get(account.id) ?? 0).toFixed(2)} · APR: ${
-                  account.annualRatePercent == null
-                    ? "n/a"
-                    : `${account.annualRatePercent.toFixed(2)}%`
-                }`}
-              />
+              <div key={account.id} style={{ display: "grid", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => toggleDebitExpand(account)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    borderRadius: 12,
+                    background: "transparent",
+                    padding: 0,
+                    margin: 0,
+                    font: "inherit",
+                    border:
+                      debitExpandedId === account.id
+                        ? "2px solid var(--brand)"
+                        : "1px solid transparent",
+                  }}
+                  aria-expanded={debitExpandedId === account.id}
+                >
+                  <StatePanel
+                    title={account.name}
+                    message={`Balance owed: $${(balances.get(account.id) ?? 0).toFixed(2)} · APR: ${
+                      account.annualRatePercent == null
+                        ? "n/a"
+                        : `${account.annualRatePercent.toFixed(2)}%`
+                    }`}
+                  />
+                </button>
+                {debitExpandedId === account.id ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      paddingBottom: 4,
+                      borderLeft: "3px solid var(--brand-soft)",
+                      marginLeft: 6,
+                      paddingLeft: 12,
+                    }}
+                  >
+                    <label className="ui-label">
+                      Actual balance owed (from lender statement)
+                      <input
+                        className="ui-input"
+                        type="number"
+                        step="0.01"
+                        value={debitTargetBalance}
+                        onChange={(e) => setDebitTargetBalance(e.target.value)}
+                        disabled={debitBalanceSubmitting}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        type="button"
+                        disabled={debitBalanceSubmitting}
+                        onClick={() => void submitDebitBalanceReconciliation()}
+                      >
+                        Set initial balance
+                      </Button>
+                      <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                        Ledger today: ${(balances.get(account.id) ?? 0).toFixed(2)} → matches your entry via a
+                        reconciliation transaction.
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ))}
             {debitAccounts.length === 0 ? (
               <StatePanel title="No debit/loan accounts" message="Add loan accounts in Settings/Accounts." />
@@ -842,7 +958,7 @@ export function FinanceWorkspaceShell() {
                       <option value="">None</option>
                       {accounts.map((account) => (
                         <option key={account.id} value={account.id}>
-                          {account.name}
+                          {formatAccountOptionLabel(account)}
                         </option>
                       ))}
                     </select>
@@ -857,7 +973,7 @@ export function FinanceWorkspaceShell() {
                       <option value="">None</option>
                       {accounts.map((account) => (
                         <option key={account.id} value={account.id}>
-                          {account.name}
+                          {formatAccountOptionLabel(account)}
                         </option>
                       ))}
                     </select>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Account, AccountSubtype, Bill, OwnerType } from "@/lib/types/domain";
+import { formatAccountOptionLabel } from "@/lib/account-option-label";
 import {
   CHATBOT_DRAFT_APPLY_EVENT,
   type ChatbotDraftApplyDetail,
@@ -328,7 +329,7 @@ export function SettingsPage() {
               <option value="">From account (optional)</option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name}
+                  {formatAccountOptionLabel(account)}
                 </option>
               ))}
             </select>

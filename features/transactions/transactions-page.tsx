@@ -19,6 +19,7 @@ import {
   type OwnerType,
   type TransactionType,
 } from "@/lib/types/domain";
+import { formatAccountOptionLabel } from "@/lib/account-option-label";
 
 type ApiSuccess<T> = { ok: true; data: T };
 type ApiError = { ok: false; error: { code: string; message: string } };
@@ -275,7 +276,7 @@ export function TransactionsPage() {
               <option value="">From account (optional)</option>
               {scopedAccounts.map((account) => (
                 <option key={`from-${account.id}`} value={account.id}>
-                  {account.name}
+                  {formatAccountOptionLabel(account)}
                 </option>
               ))}
             </select>
@@ -283,7 +284,7 @@ export function TransactionsPage() {
               <option value="">To account (optional)</option>
               {scopedAccounts.map((account) => (
                 <option key={`to-${account.id}`} value={account.id}>
-                  {account.name}
+                  {formatAccountOptionLabel(account)}
                 </option>
               ))}
             </select>
@@ -317,7 +318,7 @@ export function TransactionsPage() {
             <option value="">All accounts</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
-                {account.name}
+                {formatAccountOptionLabel(account)}
               </option>
             ))}
           </select>

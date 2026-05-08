@@ -1,0 +1,31 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.018em;
+  line-height: 1.45;
+  padding: 0.26rem 0.54rem;
+  white-space: nowrap;
+}
+
+.brand {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.neutral {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.danger {
+  background: var(--destructive-soft);
+  color: var(--destructive);
+}
+
+.success {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}

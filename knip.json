@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["app/**/*.tsx", "app/**/*.ts", "next.config.ts"],
+  "project": ["**/*.{ts,tsx}"],
+  "ignore": [".next/**", "node_modules/**", "prisma/migrations/**"],
+  "ignoreDependencies": ["@types/*"]
+}

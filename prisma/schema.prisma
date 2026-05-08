@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum OwnerType {
+  PERSONAL
+  BUSINESS
+}
+
+enum AccountSubtype {
+  CHECKING
+  SAVINGS
+  CREDIT
+  LOAN
+  INVESTMENT
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum TransactionSource {
+  MANUAL
+  IMPORT
+  ALLOCATION
+  BILL_PAYMENT
+}
+
+enum TradeType {
+  BUY
+  SELL
+}
+
+model Account {
+  id                Int            @id @default(autoincrement())
+  name              String
+  ownerType         OwnerType      @default(PERSONAL)
+  accountSubtype    AccountSubtype
+  annualRatePercent Float?
+  limitAmount       Float?
+  startingBalance   Float          @default(0)
+  startingDate      DateTime?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  fromTransactions  Transaction[]  @relation("TransactionFromAccount")
+  toTransactions    Transaction[]  @relation("TransactionToAccount")
+  defaultFromBills  Bill[]         @relation("BillDefaultFromAccount")
+  defaultToBills    Bill[]         @relation("BillDefaultToAccount")
+  budgetAllocations BudgetAllocationItem[]
+
+  @@index([ownerType, accountSubtype])
+}
+
+model Transaction {
+  id            Int               @id @default(autoincrement())
+  date          DateTime
+  yearMonth     String
+  description   String
+  amount        Float
+  type          TransactionType
+  source        TransactionSource @default(MANUAL)
+  fromAccountId Int?
+  toAccountId   Int?
+  billId        Int?
+  category      String?
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  fromAccount   Account?          @relation("TransactionFromAccount", fields: [fromAccountId], references: [id], onDelete: SetNull)
+  toAccount     Account?          @relation("TransactionToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+  bill          Bill?             @relation(fields: [billId], references: [id], onDelete: SetNull)
+
+  @@index([yearMonth])
+  @@index([type])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([billId])
+}
+
+model Bill {
+  id                   Int           @id @default(autoincrement())
+  name                 String
+  defaultAmount        Float         @default(0)
+  dueDay               Int
+  dueGroup             String?
+  category             String?
+  active               Boolean       @default(true)
+  defaultFromAccountId Int?
+  defaultToAccountId   Int?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  defaultFromAccount   Account?      @relation("BillDefaultFromAccount", fields: [defaultFromAccountId], references: [id], onDelete: SetNull)
+  defaultToAccount     Account?      @relation("BillDefaultToAccount", fields: [defaultToAccountId], references: [id], onDelete: SetNull)
+  transactions         Transaction[]
+}
+
+model Portfolio {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  holdings    Holding[]
+  trades      Trade[]
+  dividends   Dividend[]
+  categories  PortfolioCategory[]
+  snapshots   PortfolioSnapshot[]
+}
+
+model Holding {
+  id             Int       @id @default(autoincrement())
+  portfolioId    Int
+  symbol         String
+  name           String?
+  shares         Float     @default(0)
+  averageCost    Float     @default(0)
+  currentPrice   Float?
+  categoryName   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  portfolio      Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, symbol])
+}
+
+model Trade {
+  id            Int       @id @default(autoincrement())
+  portfolioId   Int
+  symbol        String
+  tradeType     TradeType
+  shares        Float
+  price         Float
+  fee           Float      @default(0)
+  tradeDate     DateTime
+  notes         String?
+  createdAt     DateTime   @default(now())
+
+  portfolio     Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, tradeDate])
+}
+
+model Dividend {
+  id            Int       @id @default(autoincrement())
+  portfolioId   Int
+  symbol        String
+  amount        Float
+  payDate       DateTime
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, payDate])
+}
+
+model PortfolioCategory {
+  id            Int       @id @default(autoincrement())
+  portfolioId   Int
+  name          String
+  targetWeight  Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, name])
+}
+
+model PortfolioSnapshot {
+  id                Int       @id @default(autoincrement())
+  portfolioId       Int
+  snapshotDate      DateTime
+  totalValue        Float
+  investedAmount    Float
+  unrealizedPnL     Float
+  estimatedDayMove  Float
+  createdAt         DateTime  @default(now())
+
+  portfolio         Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, snapshotDate])
+}
+
+model FireSettings {
+  id                     Int      @id @default(1)
+  currentAge             Int      @default(30)
+  projectedAnnualIncome  Float    @default(120000)
+  annualSpending         Float    @default(60000)
+  expectedReturnPct      Float    @default(7)
+  inflationPct           Float    @default(2.5)
+  swrPct                 Float    @default(4)
+  contributionOverride   Float?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model BudgetAllocationBatch {
+  id               Int                    @id @default(autoincrement())
+  weeklyPay        Float
+  submittedAt      DateTime               @default(now())
+  notes            String?
+
+  items            BudgetAllocationItem[]
+}
+
+model BudgetAllocationItem {
+  id               Int                    @id @default(autoincrement())
+  batchId          Int
+  accountId        Int
+  percent          Float
+  amount           Float
+  createdAt        DateTime               @default(now())
+
+  batch            BudgetAllocationBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  account          Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+}
+
+model StrategyItem {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      String   @default("planned")
+  targetDate  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

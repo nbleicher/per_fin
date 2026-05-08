@@ -1,0 +1,24 @@
+.wrap {
+  margin-bottom: 0.72rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.summary {
+  margin: 0.32rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: var(--leading-ui, 1.58);
+}
+
+.sep {
+  margin: 0 0.35rem;
+  opacity: 0.55;
+}

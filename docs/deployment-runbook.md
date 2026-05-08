@@ -8,7 +8,13 @@
    - `npm test`
    - `npm run build`
 3. Apply Prisma migration in target environment.
-4. Verify environment variables (`DATABASE_URL`, runtime config).
+4. Verify environment variables (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` for Turso; local Prisma uses `file:` URL in schema).
+
+### Turso migrations (production)
+
+Prisma’s datasource URL in [`prisma/schema.prisma`](/Users/noahbleicher/Documents/projects/personal_fin/prisma/schema.prisma) must remain `file:` for `prisma migrate` tooling; **`prisma migrate deploy` on a host only applies migrations to that SQLite file**, not to your remote Turso cluster.
+
+Apply pending SQL to Turso after generating migrations locally (see [Turso + Prisma](https://docs.turso.tech/sdk/ts/orm/prisma)), e.g. pipe each `prisma/migrations/<name>/migration.sql` into `turso db shell`, or use Turso’s recommended CI workflow—do not rely on Railway pre-deploy `migrate deploy` alone to update Turso unless you intentionally migrate an ephemeral local file (usually wrong for this app).
 
 ## Deploy
 1. Deploy application artifact.

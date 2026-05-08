@@ -4,6 +4,7 @@
 # next.js
 /.next
 /out
+.open-next
 
 # logs
 npm-debug.log*
@@ -13,6 +14,10 @@ pnpm-debug.log*
 
 # env files
 .env*
+
+# sqlite (local prisma migrate dev)
+/prisma/dev.db
+/prisma/dev.db-journal
 
 # macOS
 .DS_Store

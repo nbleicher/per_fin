@@ -2,16 +2,20 @@ import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { PrismaClient } from "@prisma/client";
 
 function createLibSqlAdapter() {
-  const url = process.env.DATABASE_URL;
+  // Turso remote: use TURSO_DATABASE_URL (libsql://…). Prisma schema url must stay file: — see prisma/schema.prisma
+  const url =
+    process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) {
-    throw new Error("DATABASE_URL must be set");
+    throw new Error(
+      "Set TURSO_DATABASE_URL (Turso libsql://) or DATABASE_URL for the LibSQL adapter",
+    );
   }
 
   if (url.startsWith("libsql://")) {
     const authToken = process.env.TURSO_AUTH_TOKEN;
     if (!authToken) {
       throw new Error(
-        "TURSO_AUTH_TOKEN is required when DATABASE_URL uses a libsql:// (Turso) URL",
+        "TURSO_AUTH_TOKEN is required when using a libsql:// (Turso) URL",
       );
     }
     return new PrismaLibSQL({ url, authToken });

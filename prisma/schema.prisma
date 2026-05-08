@@ -4,7 +4,9 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  // Must be `file:` — Prisma Migrate/validate does not accept libsql:// here.
+  // Runtime Turso URL: set TURSO_DATABASE_URL (+ TURSO_AUTH_TOKEN); see lib/db/prisma.ts
+  url = "file:./dev.db"
 }
 
 enum OwnerType {
